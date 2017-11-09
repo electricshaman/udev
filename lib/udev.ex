@@ -21,4 +21,12 @@ defmodule Udev do
   def stop(res) do
     raise "NIF stop/1 not implemented"
   end
+
+  def poll(res) do
+    raise "NIF poll/1 not implemented"
+  end
+
+  def receive_device(res) do
+    raise "NIF receive_device/1 not implemented"
+  end
 end
