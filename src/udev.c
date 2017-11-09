@@ -50,6 +50,15 @@ static ERL_NIF_TERM atom_node;
 static ERL_NIF_TERM atom_subsystem;
 static ERL_NIF_TERM atom_devtype;
 static ERL_NIF_TERM atom_action;
+static ERL_NIF_TERM atom_devpath;
+static ERL_NIF_TERM atom_syspath;
+static ERL_NIF_TERM atom_sysname;
+static ERL_NIF_TERM atom_sysnum;
+static ERL_NIF_TERM atom_vid;
+static ERL_NIF_TERM atom_pid;
+static ERL_NIF_TERM atom_man;
+static ERL_NIF_TERM atom_prod;
+static ERL_NIF_TERM atom_serial;
 
 static ErlNifResourceTypeInit mon_rt_init = {mon_rt_dtor, mon_rt_stop};
 
@@ -62,6 +71,15 @@ load(ErlNifEnv* env, void** priv, ERL_NIF_TERM info) {
   atom_subsystem = enif_make_atom(env, "subsystem");
   atom_devtype = enif_make_atom(env, "devtype");
   atom_action = enif_make_atom(env, "action");
+  atom_devpath = enif_make_atom(env, "devpath");
+  atom_syspath = enif_make_atom(env, "syspath");
+  atom_sysname = enif_make_atom(env, "sysname");
+  atom_sysnum = enif_make_atom(env, "sysnum");
+  atom_vid = enif_make_atom(env, "vid");
+  atom_pid = enif_make_atom(env, "pid");
+  atom_man = enif_make_atom(env, "manufacturer");
+  atom_prod = enif_make_atom(env, "product");
+  atom_serial = enif_make_atom(env, "serial");
 
   mon_rt = enif_open_resource_type_x(env, "monitor", &mon_rt_init, ERL_NIF_RT_CREATE, NULL);
 
@@ -143,7 +161,7 @@ poll(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
     return enif_make_badarg(env);
   }
 
-  enif_fprintf(stderr, "Polling fd=%d\n", mon->fd);
+  /*enif_fprintf(stderr, "Polling fd=%d\n", mon->fd);*/
 
   rv = enif_select(env, mon->fd, ERL_NIF_SELECT_READ, mon, NULL, atom_undefined);
   ASSERT(rv >= 0);
@@ -151,63 +169,61 @@ poll(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
   return atom_ok;
 }
 
+static int
+map_put_string(ErlNifEnv *env, ERL_NIF_TERM map_in, ERL_NIF_TERM* map_out, ERL_NIF_TERM key, const char *value)
+{
+  ErlNifBinary val_bin;
+  const char* val = value == NULL ? "" : value;
+
+  enif_alloc_binary(strlen(val), &val_bin);
+  memcpy(val_bin.data, val, strlen(val));
+
+  return enif_make_map_put(env, map_in, key, enif_make_binary(env, &val_bin), map_out);
+}
+
 static ERL_NIF_TERM
 receive_device(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
 {
   Monitor *mon;
   struct udev_device *dev;
-  const char *devnode, *subsystem, *devtype, *action;
-  ErlNifBinary devnode_bin, subsystem_bin, devtype_bin, action_bin;
 
   if(!enif_get_resource(env, argv[0], mon_rt, (void **)&mon)) {
     return enif_make_badarg(env);
   }
 
-  enif_fprintf(stderr, "Reading fd=%d\n", mon->fd);
+  /*enif_fprintf(stderr, "Reading fd=%d\n", mon->fd);*/
 
   dev = udev_monitor_receive_device(mon->monitor);
 
   if(dev) {
     ERL_NIF_TERM map = enif_make_new_map(env);
 
-    devnode = udev_device_get_devnode(dev);
-    if(devnode == NULL)
-      devnode = "";
-    enif_fprintf(stderr, "devnode=%s\n", devnode);
+    map_put_string(env, map, &map, atom_node, udev_device_get_devnode(dev));
+    map_put_string(env, map, &map, atom_subsystem, udev_device_get_subsystem(dev));
+    map_put_string(env, map, &map, atom_devtype, udev_device_get_devtype(dev));
+    map_put_string(env, map, &map, atom_action, udev_device_get_action(dev));
+    map_put_string(env, map, &map, atom_devpath, udev_device_get_devpath(dev));
+    map_put_string(env, map, &map, atom_syspath, udev_device_get_syspath(dev));
+    map_put_string(env, map, &map, atom_sysname, udev_device_get_sysname(dev));
+    map_put_string(env, map, &map, atom_sysnum, udev_device_get_sysnum(dev));
 
-    enif_alloc_binary(strlen(devnode), &devnode_bin);
-    memcpy(devnode_bin.data, devnode, strlen(devnode));
-
-    subsystem = udev_device_get_subsystem(dev);
-    if(subsystem == NULL)
-      subsystem = "";
-    enif_fprintf(stderr, "subsystem=%s\n", subsystem);
-
-    enif_alloc_binary(strlen(subsystem), &subsystem_bin);
-    memcpy(subsystem_bin.data, subsystem, strlen(subsystem));
-
-    devtype = udev_device_get_devtype(dev);
-    if(devtype == NULL)
-      devtype = "";
-    enif_fprintf(stderr, "devtype=%s\n", devtype);
-
-    enif_alloc_binary(strlen(devtype), &devtype_bin);
-    memcpy(devtype_bin.data, devtype, strlen(devtype));
-
-    action = udev_device_get_action(dev);
-    if(action == NULL)
-      action = "";
-    enif_fprintf(stderr, "action=%s\n", action);
-
-    enif_alloc_binary(strlen(action), &action_bin);
-    memcpy(action_bin.data, action, strlen(action));
-
-    enif_make_map_put(env, map, atom_node, enif_make_binary(env, &devnode_bin), &map);
-    enif_make_map_put(env, map, atom_subsystem, enif_make_binary(env, &subsystem_bin), &map);
-    enif_make_map_put(env, map, atom_devtype, enif_make_binary(env, &devtype_bin), &map);
-    enif_make_map_put(env, map, atom_action, enif_make_binary(env, &action_bin), &map);
+    dev = udev_device_get_parent_with_subsystem_devtype(dev, "usb", "usb_device");
+    if(dev) {
+      map_put_string(env, map, &map, atom_vid, udev_device_get_sysattr_value(dev,"idVendor"));
+      map_put_string(env, map, &map, atom_pid, udev_device_get_sysattr_value(dev,"idProduct"));
+      map_put_string(env, map, &map, atom_man, udev_device_get_sysattr_value(dev,"manufacturer"));
+      map_put_string(env, map, &map, atom_prod, udev_device_get_sysattr_value(dev,"product"));
+      map_put_string(env, map, &map, atom_serial, udev_device_get_sysattr_value(dev,"serial"));
+    } else {
+      map_put_string(env, map, &map, atom_vid, NULL);
+      map_put_string(env, map, &map, atom_pid, NULL);
+      map_put_string(env, map, &map, atom_man, NULL);
+      map_put_string(env, map, &map, atom_prod, NULL);
+      map_put_string(env, map, &map, atom_serial, NULL);
+    }
 
     udev_device_unref(dev);
+
     return map;
   } else {
     return atom_error;
