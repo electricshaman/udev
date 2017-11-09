@@ -14,7 +14,11 @@ defmodule Udev do
     end
   end
 
-  def enumerate(_subsystem) do
-    raise "NIF enumerate/1 not implemented"
+  def start do
+    raise "NIF start/0 not implemented"
+  end
+
+  def stop(res) do
+    raise "NIF stop/1 not implemented"
   end
 end
