@@ -22,7 +22,7 @@ assert_error(const char *expr, const char *func, const char *file, int line)
 }
 
 typedef struct {
-  struct udev *udev;
+  struct udev *context;
   struct udev_monitor *monitor;
   int fd;
 } Monitor;
@@ -39,7 +39,7 @@ mon_rt_stop(ErlNifEnv *env, void *obj, int fd, int is_direct_call)
   Monitor *mon = (Monitor *)obj;
   enif_fprintf(stderr, "mon_rt_stop called %s\n", (is_direct_call ? "DIRECT" : "LATER"));
 
-  udev_unref(mon->udev);
+  udev_unref(mon->context);
 }
 
 static ErlNifResourceType *mon_rt;
@@ -89,23 +89,23 @@ start(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
   Monitor *mon;
   ERL_NIF_TERM res;
   int fd;
-	struct udev *udev;
+	struct udev *context;
   struct udev_monitor *udev_mon;
 
-  udev = udev_new();
-  if(!udev) {
-    enif_fprintf(stderr, "Can't make udev\n");
+  context = udev_new();
+  if(!context) {
+    enif_fprintf(stderr, "Can't make udev context\n");
     return enif_make_badarg(env);
   }
 
-  udev_mon = udev_monitor_new_from_netlink(udev, "udev");
+  udev_mon = udev_monitor_new_from_netlink(context, "udev");
 	udev_monitor_enable_receiving(udev_mon);
 	fd = udev_monitor_get_fd(udev_mon);
 
   SET_NONBLOCKING(fd);
 
   mon = enif_alloc_resource(mon_rt, sizeof(Monitor));
-  mon->udev = udev;
+  mon->context = context;
   mon->monitor = udev_mon;
   mon->fd = fd;
 
