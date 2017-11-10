@@ -13,13 +13,12 @@
 #define ASSERT(e) ((void)((e) ? 1 : (assert_error(#e, __func__, __FILE__, __LINE__), 0)))
 #define SET_NONBLOCKING(fd) fcntl((fd), F_SETFL, fcntl((fd), F_GETFL, 0) | O_NONBLOCK)
 
-static void
-assert_error(const char *expr, const char *func, const char *file, int line)
+static void assert_error(const char *expr, const char *func, const char *file, int line)
 {
-    fflush(stdout);
-    fprintf(stderr, "%s:%d:%s() Assertion failed: %s\n", file, line, func, expr);
-    fflush(stderr);
-    abort();
+  fflush(stdout);
+  fprintf(stderr, "%s:%d:%s() Assertion failed: %s\n", file, line, func, expr);
+  fflush(stderr);
+  abort();
 }
 
 typedef struct {
@@ -57,14 +56,12 @@ typedef struct {
   ERL_NIF_TERM atom_seqnum;
 } monitor_priv;
 
-static void
-mon_rt_dtor(ErlNifEnv *env, void *obj)
+static void mon_rt_dtor(ErlNifEnv *env, void *obj)
 {
   enif_fprintf(stderr, "mon_rt_dtor called\n");
 }
 
-static void
-mon_rt_stop(ErlNifEnv *env, void *obj, int fd, int is_direct_call)
+static void mon_rt_stop(ErlNifEnv *env, void *obj, int fd, int is_direct_call)
 {
   Monitor *rt = (Monitor *)obj;
   enif_fprintf(stderr, "mon_rt_stop called %s\n", (is_direct_call ? "DIRECT" : "LATER"));
@@ -72,8 +69,7 @@ mon_rt_stop(ErlNifEnv *env, void *obj, int fd, int is_direct_call)
   udev_unref(rt->context);
 }
 
-static void
-mon_rt_down(ErlNifEnv* env, void* obj, ErlNifPid* pid, ErlNifMonitor* mon)
+static void mon_rt_down(ErlNifEnv* env, void* obj, ErlNifPid* pid, ErlNifMonitor* mon)
 {
   Monitor *rt = (Monitor *)obj;
   ERL_NIF_TERM undefined;
@@ -89,8 +85,7 @@ mon_rt_down(ErlNifEnv* env, void* obj, ErlNifPid* pid, ErlNifMonitor* mon)
 static ErlNifResourceType *mon_rt;
 static ErlNifResourceTypeInit mon_rt_init = {mon_rt_dtor, mon_rt_stop, mon_rt_down};
 
-static int
-load(ErlNifEnv* env, void** priv, ERL_NIF_TERM info) {
+static int load(ErlNifEnv* env, void** priv, ERL_NIF_TERM info) {
   monitor_priv* data = enif_alloc(sizeof(monitor_priv));
   if (data == NULL) {
     return 1;
@@ -130,28 +125,24 @@ load(ErlNifEnv* env, void** priv, ERL_NIF_TERM info) {
   return !mon_rt;
 }
 
-static int
-reload(ErlNifEnv* env, void** priv, ERL_NIF_TERM info) {
+static int reload(ErlNifEnv* env, void** priv, ERL_NIF_TERM info) {
   return 0;
 }
 
-static int
-upgrade(ErlNifEnv* env, void** priv, void** old_priv, ERL_NIF_TERM info) {
+static int upgrade(ErlNifEnv* env, void** priv, void** old_priv, ERL_NIF_TERM info) {
   return load(env, priv, info);
 }
 
-static void
-unload(ErlNifEnv* env, void* priv) {
+static void unload(ErlNifEnv* env, void* priv) {
   enif_free(priv);
 }
 
-static ERL_NIF_TERM
-start(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
+static ERL_NIF_TERM start(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
 {
   Monitor *mon;
   ERL_NIF_TERM res;
   int fd;
-	struct udev *context;
+  struct udev *context;
   struct udev_monitor *udev_mon;
   monitor_priv* priv = enif_priv_data(env);
   ErlNifPid self;
@@ -165,8 +156,8 @@ start(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
   }
 
   udev_mon = udev_monitor_new_from_netlink(context, "udev");
-	udev_monitor_enable_receiving(udev_mon);
-	fd = udev_monitor_get_fd(udev_mon);
+  udev_monitor_enable_receiving(udev_mon);
+  fd = udev_monitor_get_fd(udev_mon);
 
   SET_NONBLOCKING(fd);
 
@@ -183,8 +174,7 @@ start(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
   return enif_make_tuple2(env, priv->atom_ok, res);
 }
 
-static ERL_NIF_TERM
-stop(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
+static ERL_NIF_TERM stop(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
 {
   Monitor *mon;
   int rv;
@@ -202,8 +192,7 @@ stop(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
   return priv->atom_ok;
 }
 
-static ERL_NIF_TERM
-poll(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
+static ERL_NIF_TERM poll(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
 {
   Monitor *mon;
   int rv;
@@ -221,8 +210,7 @@ poll(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
   return priv->atom_ok;
 }
 
-static int
-map_put_string(ErlNifEnv *env, ERL_NIF_TERM map_in, ERL_NIF_TERM* map_out, ERL_NIF_TERM key, const char *value)
+static int map_put_string(ErlNifEnv *env, ERL_NIF_TERM map_in, ERL_NIF_TERM* map_out, ERL_NIF_TERM key, const char *value)
 {
   ErlNifBinary bin;
   monitor_priv* priv = enif_priv_data(env);
@@ -237,14 +225,12 @@ map_put_string(ErlNifEnv *env, ERL_NIF_TERM map_in, ERL_NIF_TERM* map_out, ERL_N
   return enif_make_map_put(env, map_in, key, enif_make_binary(env, &bin), map_out);
 }
 
-static int
-map_put(ErlNifEnv *env, ERL_NIF_TERM map_in, ERL_NIF_TERM* map_out, ERL_NIF_TERM key, ERL_NIF_TERM value)
+static int map_put(ErlNifEnv *env, ERL_NIF_TERM map_in, ERL_NIF_TERM* map_out, ERL_NIF_TERM key, ERL_NIF_TERM value)
 {
   return enif_make_map_put(env, map_in, key, value, map_out);
 }
 
-static ERL_NIF_TERM
-receive_device(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
+static ERL_NIF_TERM receive_device(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
 {
   Monitor *mon;
   struct udev_device *dev;
