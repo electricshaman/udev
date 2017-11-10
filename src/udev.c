@@ -76,11 +76,13 @@ static void
 mon_rt_down(ErlNifEnv* env, void* obj, ErlNifPid* pid, ErlNifMonitor* mon)
 {
   Monitor *rt = (Monitor *)obj;
+  ERL_NIF_TERM undefined;
   int rv;
 
   enif_fprintf(stderr, "mon_rt_down called\n");
 
-  rv = enif_select(env, rt->fd, ERL_NIF_SELECT_STOP, rt, NULL, enif_make_atom(env, "undefined"));
+  enif_make_existing_atom(env, "undefined", &undefined, ERL_NIF_LATIN1);
+  rv = enif_select(env, rt->fd, ERL_NIF_SELECT_STOP, rt, NULL, undefined);
   ASSERT(rv >= 0);
 }
 
