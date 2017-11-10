@@ -33,6 +33,11 @@ typedef struct {
   ERL_NIF_TERM atom_undefined;
   ERL_NIF_TERM atom_error;
   ERL_NIF_TERM atom_nil;
+  ERL_NIF_TERM atom_add;
+  ERL_NIF_TERM atom_remove;
+  ERL_NIF_TERM atom_change;
+  ERL_NIF_TERM atom_online;
+  ERL_NIF_TERM atom_offline;
   ERL_NIF_TERM atom_node;
   ERL_NIF_TERM atom_subsystem;
   ERL_NIF_TERM atom_devtype;
@@ -49,6 +54,7 @@ typedef struct {
   ERL_NIF_TERM atom_prod;
   ERL_NIF_TERM atom_serial;
   ERL_NIF_TERM atom_driver;
+  ERL_NIF_TERM atom_seqnum;
 } monitor_priv;
 
 static void
@@ -92,6 +98,11 @@ load(ErlNifEnv* env, void** priv, ERL_NIF_TERM info) {
   data->atom_undefined = enif_make_atom(env, "undefined");
   data->atom_error = enif_make_atom(env, "error");
   data->atom_nil = enif_make_atom(env, "nil");
+  data->atom_add = enif_make_atom(env, "add");
+  data->atom_remove = enif_make_atom(env, "remove");
+  data->atom_change = enif_make_atom(env, "change");
+  data->atom_online = enif_make_atom(env, "online");
+  data->atom_offline = enif_make_atom(env, "offline");
   data->atom_node = enif_make_atom(env, "node");
   data->atom_subsystem = enif_make_atom(env, "subsystem");
   data->atom_devtype = enif_make_atom(env, "devtype");
@@ -108,6 +119,7 @@ load(ErlNifEnv* env, void** priv, ERL_NIF_TERM info) {
   data->atom_prod = enif_make_atom(env, "product");
   data->atom_serial = enif_make_atom(env, "serial");
   data->atom_driver = enif_make_atom(env, "driver");
+  data->atom_seqnum = enif_make_atom(env, "seqnum");
 
   *priv = (void*) data;
 
@@ -247,11 +259,16 @@ receive_device(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
   if(dev) {
     ERL_NIF_TERM map = enif_make_new_map(env);
     dev_t devnum = udev_device_get_devnum(dev);
+    ERL_NIF_TERM atom_action;
+    const char *action = udev_device_get_action(dev);
+    int rv = enif_make_existing_atom(env, action, &atom_action, ERL_NIF_LATIN1);
+
+    ASSERT(rv > 0);
 
     map_put_string(env, map, &map, priv->atom_node, udev_device_get_devnode(dev));
     map_put_string(env, map, &map, priv->atom_subsystem, udev_device_get_subsystem(dev));
     map_put_string(env, map, &map, priv->atom_devtype, udev_device_get_devtype(dev));
-    map_put_string(env, map, &map, priv->atom_action, udev_device_get_action(dev));
+    map_put(env, map, &map, priv->atom_action, atom_action);
     map_put_string(env, map, &map, priv->atom_devpath, udev_device_get_devpath(dev));
     map_put_string(env, map, &map, priv->atom_syspath, udev_device_get_syspath(dev));
     map_put_string(env, map, &map, priv->atom_sysname, udev_device_get_sysname(dev));
@@ -259,6 +276,7 @@ receive_device(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
     map_put_string(env, map, &map, priv->atom_driver, udev_device_get_driver(dev));
     map_put(env, map, &map, priv->atom_major, enif_make_long(env, MAJOR(devnum)));
     map_put(env, map, &map, priv->atom_minor, enif_make_long(env, MINOR(devnum)));
+    map_put(env, map, &map, priv->atom_seqnum, enif_make_long(env, udev_device_get_seqnum(dev)));
 
     dev = udev_device_get_parent_with_subsystem_devtype(dev, "usb", "usb_device");
     if(dev) {
