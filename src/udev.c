@@ -5,8 +5,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
-#include "erl_nif.h"
 #include <linux/kdev_t.h>
+#include "erl_nif.h"
 
 /*#define DEBUG*/
 
@@ -27,21 +27,6 @@ typedef struct {
   struct udev_monitor *monitor;
   int fd;
 } Monitor;
-
-static void
-mon_rt_dtor(ErlNifEnv *env, void *obj)
-{
-  enif_fprintf(stderr, "mon_rt_dtor called\n");
-}
-
-static void
-mon_rt_stop(ErlNifEnv *env, void *obj, int fd, int is_direct_call)
-{
-  Monitor *mon = (Monitor *)obj;
-  enif_fprintf(stderr, "mon_rt_stop called %s\n", (is_direct_call ? "DIRECT" : "LATER"));
-
-  udev_unref(mon->context);
-}
 
 typedef struct {
   ERL_NIF_TERM atom_ok;
@@ -66,8 +51,35 @@ typedef struct {
   ERL_NIF_TERM atom_driver;
 } monitor_priv;
 
+static void
+mon_rt_dtor(ErlNifEnv *env, void *obj)
+{
+  enif_fprintf(stderr, "mon_rt_dtor called\n");
+}
+
+static void
+mon_rt_stop(ErlNifEnv *env, void *obj, int fd, int is_direct_call)
+{
+  Monitor *rt = (Monitor *)obj;
+  enif_fprintf(stderr, "mon_rt_stop called %s\n", (is_direct_call ? "DIRECT" : "LATER"));
+  udev_monitor_unref(rt->monitor);
+  udev_unref(rt->context);
+}
+
+static void
+mon_rt_down(ErlNifEnv* env, void* obj, ErlNifPid* pid, ErlNifMonitor* mon)
+{
+  Monitor *rt = (Monitor *)obj;
+  int rv;
+
+  enif_fprintf(stderr, "mon_rt_down called\n");
+
+  rv = enif_select(env, rt->fd, ERL_NIF_SELECT_STOP, rt, NULL, enif_make_atom(env, "undefined"));
+  ASSERT(rv >= 0);
+}
+
 static ErlNifResourceType *mon_rt;
-static ErlNifResourceTypeInit mon_rt_init = {mon_rt_dtor, mon_rt_stop};
+static ErlNifResourceTypeInit mon_rt_init = {mon_rt_dtor, mon_rt_stop, mon_rt_down};
 
 static int
 load(ErlNifEnv* env, void** priv, ERL_NIF_TERM info) {
@@ -128,6 +140,9 @@ start(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
 	struct udev *context;
   struct udev_monitor *udev_mon;
   monitor_priv* priv = enif_priv_data(env);
+  ErlNifPid self;
+
+  enif_self(env, &self);
 
   context = udev_new();
   if(!context) {
@@ -145,6 +160,8 @@ start(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
   mon->context = context;
   mon->monitor = udev_mon;
   mon->fd = fd;
+
+  enif_monitor_process(env, mon, &self, NULL);
 
   res = enif_make_resource(env, mon);
   enif_release_resource(mon);
@@ -240,8 +257,8 @@ receive_device(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
     map_put_string(env, map, &map, priv->atom_sysname, udev_device_get_sysname(dev));
     map_put_string(env, map, &map, priv->atom_sysnum, udev_device_get_sysnum(dev));
     map_put_string(env, map, &map, priv->atom_driver, udev_device_get_driver(dev));
-    map_put(env, map, &map, priv->atom_major, enif_make_int(env, MAJOR(devnum)));
-    map_put(env, map, &map, priv->atom_minor, enif_make_int(env, MINOR(devnum)));
+    map_put(env, map, &map, priv->atom_major, enif_make_long(env, MAJOR(devnum)));
+    map_put(env, map, &map, priv->atom_minor, enif_make_long(env, MINOR(devnum)));
 
     dev = udev_device_get_parent_with_subsystem_devtype(dev, "usb", "usb_device");
     if(dev) {
