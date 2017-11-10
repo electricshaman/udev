@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <string.h>
 #include "erl_nif.h"
+#include <linux/kdev_t.h>
 
 /*#define DEBUG*/
 
@@ -46,9 +47,12 @@ static ErlNifResourceType *mon_rt;
 static ERL_NIF_TERM atom_ok;
 static ERL_NIF_TERM atom_undefined;
 static ERL_NIF_TERM atom_error;
+static ERL_NIF_TERM atom_nil;
 static ERL_NIF_TERM atom_node;
 static ERL_NIF_TERM atom_subsystem;
 static ERL_NIF_TERM atom_devtype;
+static ERL_NIF_TERM atom_major;
+static ERL_NIF_TERM atom_minor;
 static ERL_NIF_TERM atom_action;
 static ERL_NIF_TERM atom_devpath;
 static ERL_NIF_TERM atom_syspath;
@@ -59,6 +63,7 @@ static ERL_NIF_TERM atom_pid;
 static ERL_NIF_TERM atom_man;
 static ERL_NIF_TERM atom_prod;
 static ERL_NIF_TERM atom_serial;
+static ERL_NIF_TERM atom_driver;
 
 static ErlNifResourceTypeInit mon_rt_init = {mon_rt_dtor, mon_rt_stop};
 
@@ -67,9 +72,12 @@ load(ErlNifEnv* env, void** priv, ERL_NIF_TERM info) {
   atom_ok = enif_make_atom(env, "ok");
   atom_undefined = enif_make_atom(env, "undefined");
   atom_error = enif_make_atom(env, "error");
+  atom_nil = enif_make_atom(env, "nil");
   atom_node = enif_make_atom(env, "node");
   atom_subsystem = enif_make_atom(env, "subsystem");
   atom_devtype = enif_make_atom(env, "devtype");
+  atom_major = enif_make_atom(env, "major");
+  atom_minor = enif_make_atom(env, "minor");
   atom_action = enif_make_atom(env, "action");
   atom_devpath = enif_make_atom(env, "devpath");
   atom_syspath = enif_make_atom(env, "syspath");
@@ -80,6 +88,7 @@ load(ErlNifEnv* env, void** priv, ERL_NIF_TERM info) {
   atom_man = enif_make_atom(env, "manufacturer");
   atom_prod = enif_make_atom(env, "product");
   atom_serial = enif_make_atom(env, "serial");
+  atom_driver = enif_make_atom(env, "driver");
 
   mon_rt = enif_open_resource_type_x(env, "monitor", &mon_rt_init, ERL_NIF_RT_CREATE, NULL);
 
@@ -112,7 +121,7 @@ start(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
 
   context = udev_new();
   if(!context) {
-    enif_fprintf(stderr, "Can't make udev context\n");
+    enif_fprintf(stderr, "Can't create udev context\n");
     return enif_make_badarg(env);
   }
 
@@ -172,13 +181,21 @@ poll(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
 static int
 map_put_string(ErlNifEnv *env, ERL_NIF_TERM map_in, ERL_NIF_TERM* map_out, ERL_NIF_TERM key, const char *value)
 {
-  ErlNifBinary val_bin;
-  const char* val = value == NULL ? "" : value;
+  ErlNifBinary bin;
 
-  enif_alloc_binary(strlen(val), &val_bin);
-  memcpy(val_bin.data, val, strlen(val));
+  if(value == NULL)
+    return enif_make_map_put(env, map_in, key, atom_nil, map_out);
 
-  return enif_make_map_put(env, map_in, key, enif_make_binary(env, &val_bin), map_out);
+  enif_alloc_binary(strlen(value), &bin);
+  memcpy(bin.data, value, strlen(value));
+
+  return enif_make_map_put(env, map_in, key, enif_make_binary(env, &bin), map_out);
+}
+
+static int
+map_put(ErlNifEnv *env, ERL_NIF_TERM map_in, ERL_NIF_TERM* map_out, ERL_NIF_TERM key, ERL_NIF_TERM value)
+{
+  return enif_make_map_put(env, map_in, key, value, map_out);
 }
 
 static ERL_NIF_TERM
@@ -197,6 +214,7 @@ receive_device(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
 
   if(dev) {
     ERL_NIF_TERM map = enif_make_new_map(env);
+    dev_t devnum = udev_device_get_devnum(dev);
 
     map_put_string(env, map, &map, atom_node, udev_device_get_devnode(dev));
     map_put_string(env, map, &map, atom_subsystem, udev_device_get_subsystem(dev));
@@ -206,6 +224,9 @@ receive_device(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
     map_put_string(env, map, &map, atom_syspath, udev_device_get_syspath(dev));
     map_put_string(env, map, &map, atom_sysname, udev_device_get_sysname(dev));
     map_put_string(env, map, &map, atom_sysnum, udev_device_get_sysnum(dev));
+    map_put_string(env, map, &map, atom_driver, udev_device_get_driver(dev));
+    map_put(env, map, &map, atom_major, enif_make_int(env, MAJOR(devnum)));
+    map_put(env, map, &map, atom_minor, enif_make_int(env, MINOR(devnum)));
 
     dev = udev_device_get_parent_with_subsystem_devtype(dev, "usb", "usb_device");
     if(dev) {
