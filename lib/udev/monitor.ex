@@ -29,8 +29,7 @@ defmodule Udev.Monitor do
     {time, dev} = :timer.tc(fn -> Udev.receive_device(res) end)
     send(state.listener, dev)
     Logger.debug "Event (#{time}µs): #{inspect dev}"
-    {poll_time, :ok} = :timer.tc(fn -> Udev.poll(res) end)
-    #Logger.debug "Poll (#{poll_time}µs)"
+    Udev.poll(res)
     {:noreply, state}
   end
 end
