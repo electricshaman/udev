@@ -262,8 +262,8 @@ static ERL_NIF_TERM receive_device(ErlNifEnv *env, int argc, const ERL_NIF_TERM 
     map_put_string(env, map, &map, priv->atom_sysname, udev_device_get_sysname(dev));
     map_put_string(env, map, &map, priv->atom_sysnum, udev_device_get_sysnum(dev));
     map_put_string(env, map, &map, priv->atom_driver, udev_device_get_driver(dev));
-    map_put(env, map, &map, priv->atom_major, enif_make_long(env, MAJOR(devnum)));
-    map_put(env, map, &map, priv->atom_minor, enif_make_long(env, MINOR(devnum)));
+    map_put(env, map, &map, priv->atom_major, enif_make_uint(env, MAJOR(devnum)));
+    map_put(env, map, &map, priv->atom_minor, enif_make_uint(env, MINOR(devnum)));
     map_put(env, map, &map, priv->atom_seqnum, enif_make_long(env, udev_device_get_seqnum(dev)));
 
     dev = udev_device_get_parent_with_subsystem_devtype(dev, "usb", "usb_device");
