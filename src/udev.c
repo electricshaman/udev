@@ -25,6 +25,7 @@ typedef struct {
   struct udev *context;
   struct udev_monitor *monitor;
   int fd;
+  int open;
 } Monitor;
 
 typedef struct {
@@ -72,14 +73,16 @@ static void mon_rt_stop(ErlNifEnv *env, void *obj, int fd, int is_direct_call)
 static void mon_rt_down(ErlNifEnv* env, void* obj, ErlNifPid* pid, ErlNifMonitor* mon)
 {
   Monitor *rt = (Monitor *)obj;
-  ERL_NIF_TERM undefined;
   int rv;
 
   enif_fprintf(stderr, "mon_rt_down called\n");
 
-  enif_make_existing_atom(env, "undefined", &undefined, ERL_NIF_LATIN1);
-  rv = enif_select(env, rt->fd, ERL_NIF_SELECT_STOP, rt, NULL, undefined);
-  ASSERT(rv >= 0);
+  if(rt->open) {
+    ERL_NIF_TERM undefined;
+    enif_make_existing_atom(env, "undefined", &undefined, ERL_NIF_LATIN1);
+    rv = enif_select(env, rt->fd, ERL_NIF_SELECT_STOP, rt, NULL, undefined);
+    ASSERT(rv >= 0);
+  }
 }
 
 static ErlNifResourceType *mon_rt;
@@ -165,6 +168,7 @@ static ERL_NIF_TERM start(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
   mon->context = context;
   mon->monitor = udev_mon;
   mon->fd = fd;
+  mon->open = 1;
 
   enif_monitor_process(env, mon, &self, NULL);
 
@@ -177,17 +181,21 @@ static ERL_NIF_TERM start(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
 static ERL_NIF_TERM stop(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
 {
   Monitor *mon;
-  int rv;
   monitor_priv* priv = enif_priv_data(env);
+  int do_stop;
 
   if(!enif_get_resource(env, argv[0], mon_rt, (void **)&mon)) {
     return enif_make_badarg(env);
   }
 
-  enif_fprintf(stderr, "Closing fd=%d\n", mon->fd);
+  do_stop = mon->open;
+  mon->open = 0;
 
-  rv = enif_select(env, mon->fd, ERL_NIF_SELECT_STOP, mon, NULL, priv->atom_undefined);
-  ASSERT(rv >= 0);
+  if(do_stop) {
+    enif_fprintf(stderr, "Closing fd=%d\n", mon->fd);
+    int rv = enif_select(env, mon->fd, ERL_NIF_SELECT_STOP, mon, NULL, priv->atom_undefined);
+    ASSERT(rv >= 0);
+  }
 
   return priv->atom_ok;
 }
