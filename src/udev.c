@@ -148,9 +148,21 @@ static ERL_NIF_TERM start(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
   struct udev *context;
   struct udev_monitor *udev_mon;
   monitor_priv* priv = enif_priv_data(env);
+  ErlNifBinary name_bin;
   ErlNifPid self;
 
-  enif_self(env, &self);
+  if (enif_inspect_binary(env, argv[0], &name_bin) == 0) {
+    return enif_make_badarg(env);
+  }
+
+  char name[name_bin.size + 1];
+  *name = '\0';
+  strncat(name, (char*) name_bin.data, name_bin.size);
+  enif_release_binary(&name_bin);
+
+  if(strcmp(name, "udev") > 0 && strcmp(name, "kernel") > 0) {
+    return enif_make_badarg(env);
+  }
 
   context = udev_new();
   if(!context) {
@@ -158,7 +170,9 @@ static ERL_NIF_TERM start(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
     return enif_make_badarg(env);
   }
 
-  udev_mon = udev_monitor_new_from_netlink(context, "udev");
+  enif_self(env, &self);
+
+  udev_mon = udev_monitor_new_from_netlink(context, name);
   udev_monitor_enable_receiving(udev_mon);
   fd = udev_monitor_get_fd(udev_mon);
 
@@ -298,7 +312,7 @@ static ERL_NIF_TERM receive_device(ErlNifEnv *env, int argc, const ERL_NIF_TERM 
 }
 
 static ErlNifFunc nif_funcs[] = {
-  {"start", 0, start},
+  {"start", 1, start},
   {"stop", 1, stop},
   {"poll", 1, poll},
   {"receive_device", 1, receive_device}

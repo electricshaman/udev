@@ -2,18 +2,26 @@ defmodule Udev.Monitor do
   use GenServer
   require Logger
 
-  def start_link do
-    start_link(self())
+  @names [:udev, :kernel]
+
+  def start_link(name \\ :udev)
+
+  def start_link(name) when name in @names do
+    start_link(self(), name)
   end
 
-  def start_link(listener) do
-    GenServer.start_link(__MODULE__, [listener])
+  def start_link(_name), do: {:error, :badarg}
+
+  def start_link(listener, name) when name in @names do
+    GenServer.start_link(__MODULE__, [listener, name])
   end
 
-  def init([listener]) do
-    {:ok, res} = Udev.start()
+  def start_link(_listener, _name), do: {:error, :badarg}
+
+  def init([listener, name]) do
+    {:ok, res} = Udev.start(to_string(name))
     :ok = Udev.poll(res)
-    {:ok, %{res: res, listener: listener}}
+    {:ok, %{res: res, listener: listener, name: name}}
   end
 
   def stop(pid) do
@@ -28,9 +36,9 @@ defmodule Udev.Monitor do
   def handle_info({:select, res, _ref, :ready_input}, state) do
     {time, dev} = :timer.tc(fn -> Udev.receive_device(res) end)
     dev = decorate_device(dev)
-
-    send(state.listener, dev)
-    Logger.debug "Event (#{time}µs): #{inspect dev}"
+    event = {state.name, dev}
+    send(state.listener, event)
+    Logger.debug "Event (#{time}µs): #{inspect event}"
     :ok = Udev.poll(res)
 
     {:noreply, state}

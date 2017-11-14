@@ -17,4 +17,12 @@ defmodule Udev.MonitorTest do
   test "decorate device with major/minor" do
     assert %{major_minor: {42, 0}} = Monitor.decorate_device(%{major: 42, minor: 0})
   end
+
+  test "return error if name other than udev or kernel is passed" do
+    assert {:error, _} = Monitor.start_link(:stuff)
+    assert {:ok, pid1} = Monitor.start_link(:udev)
+    assert {:ok, pid2} = Monitor.start_link(:kernel)
+    Monitor.stop(pid1)
+    Monitor.stop(pid2)
+  end
 end
