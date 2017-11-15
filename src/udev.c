@@ -135,7 +135,7 @@ static void unload(ErlNifEnv* env, void* priv) {
   enif_free(priv);
 }
 
-static ERL_NIF_TERM start(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
+static ERL_NIF_TERM mon_start(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
 {
   Monitor *mon;
   ERL_NIF_TERM res;
@@ -187,7 +187,7 @@ static ERL_NIF_TERM start(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
   return enif_make_tuple2(env, priv->atom_ok, res);
 }
 
-static ERL_NIF_TERM stop(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
+static ERL_NIF_TERM mon_stop(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
 {
   Monitor *mon;
   monitor_priv* priv = enif_priv_data(env);
@@ -209,7 +209,7 @@ static ERL_NIF_TERM stop(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
   return priv->atom_ok;
 }
 
-static ERL_NIF_TERM poll(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
+static ERL_NIF_TERM mon_poll(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
 {
   Monitor *mon;
   int rv;
@@ -247,7 +247,7 @@ static int map_put(ErlNifEnv *env, ERL_NIF_TERM map_in, ERL_NIF_TERM* map_out, E
   return enif_make_map_put(env, map_in, key, value, map_out);
 }
 
-static ERL_NIF_TERM receive_device(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
+static ERL_NIF_TERM mon_receive_device(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
 {
   Monitor *mon;
   struct udev_device *dev;
@@ -292,10 +292,10 @@ static ERL_NIF_TERM receive_device(ErlNifEnv *env, int argc, const ERL_NIF_TERM 
 }
 
 static ErlNifFunc nif_funcs[] = {
-  {"start", 1, start},
-  {"stop", 1, stop},
-  {"poll", 1, poll},
-  {"receive_device", 1, receive_device}
+  {"start", 1, mon_start},
+  {"stop", 1, mon_stop},
+  {"poll", 1, mon_poll},
+  {"receive_device", 1, mon_receive_device}
 };
 
 ERL_NIF_INIT(Elixir.Udev, nif_funcs, &load, &reload, &upgrade, &unload)
