@@ -38,7 +38,7 @@ typedef struct {
   ERL_NIF_TERM atom_change;
   ERL_NIF_TERM atom_online;
   ERL_NIF_TERM atom_offline;
-  ERL_NIF_TERM atom_node;
+  ERL_NIF_TERM atom_devnode;
   ERL_NIF_TERM atom_subsystem;
   ERL_NIF_TERM atom_devtype;
   ERL_NIF_TERM atom_major;
@@ -103,7 +103,7 @@ static int load(ErlNifEnv* env, void** priv, ERL_NIF_TERM info) {
   data->atom_change = enif_make_atom(env, "change");
   data->atom_online = enif_make_atom(env, "online");
   data->atom_offline = enif_make_atom(env, "offline");
-  data->atom_node = enif_make_atom(env, "node");
+  data->atom_devnode = enif_make_atom(env, "devnode");
   data->atom_subsystem = enif_make_atom(env, "subsystem");
   data->atom_devtype = enif_make_atom(env, "devtype");
   data->atom_major = enif_make_atom(env, "major");
@@ -275,7 +275,7 @@ static ERL_NIF_TERM receive_device(ErlNifEnv *env, int argc, const ERL_NIF_TERM 
 
     ASSERT(rv > 0);
 
-    map_put_string(env, map, &map, priv->atom_node, udev_device_get_devnode(dev));
+    map_put_string(env, map, &map, priv->atom_devnode, udev_device_get_devnode(dev));
     map_put_string(env, map, &map, priv->atom_subsystem, udev_device_get_subsystem(dev));
     map_put_string(env, map, &map, priv->atom_devtype, udev_device_get_devtype(dev));
     map_put(env, map, &map, priv->atom_action, atom_action);
