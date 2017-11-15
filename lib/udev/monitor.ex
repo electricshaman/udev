@@ -4,6 +4,9 @@ defmodule Udev.Monitor do
 
   @names [:udev, :kernel]
 
+  @doc """
+  Start a new udev or kernel (uevent) monitor process.
+  """
   def start_link(name \\ :udev)
 
   def start_link(name) when name in @names do
@@ -24,6 +27,9 @@ defmodule Udev.Monitor do
     {:ok, %{res: res, listener: listener, name: name}}
   end
 
+  @doc """
+  Stop a running udev or kernel (uevent) monitor.
+  """
   def stop(pid) do
     GenServer.call(pid, :stop)
   end
