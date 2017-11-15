@@ -45,24 +45,15 @@ defmodule Udev.Monitor do
   end
 
   def decorate_device(dev) do
-    decorate_device(dev, [:vid_pid, :major_minor])
+    decorate_device(dev, [:devnum])
   end
 
-  defp decorate_device(%{vid: nil, pid: nil} = dev, [:vid_pid|t]) do
-    Map.put(dev, :vid_pid, nil)
+  defp decorate_device(%{major: nil, minor: nil} = dev, [:devnum|t]) do
+    Map.put(dev, :devnum, nil)
     |> decorate_device(t)
   end
-  defp decorate_device(%{vid: vid, pid: pid} = dev, [:vid_pid|t]) do
-    Map.put(dev, :vid_pid, "#{vid}:#{pid}")
-    |> decorate_device(t)
-  end
-
-  defp decorate_device(%{major: nil, minor: nil} = dev, [:major_minor|t]) do
-    Map.put(dev, :major_minor, nil)
-    |> decorate_device(t)
-  end
-  defp decorate_device(%{major: major, minor: minor} = dev, [:major_minor|t]) do
-    Map.put(dev, :major_minor, {major, minor})
+  defp decorate_device(%{major: major, minor: minor} = dev, [:devnum|t]) do
+    Map.put(dev, :devnum, {major, minor})
     |> decorate_device(t)
   end
 
