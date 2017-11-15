@@ -40,34 +40,14 @@ defmodule Udev.Monitor do
   end
 
   def handle_info({:select, res, _ref, :ready_input}, state) do
-    {time, dev} = :timer.tc(fn -> Udev.receive_device(res) end)
-    dev = decorate_device(dev)
+    {time, raw_dev} = :timer.tc(fn -> Udev.receive_device(res) end)
+    dev = struct(Udev.Device, raw_dev)
     event = {state.name, dev}
     send(state.listener, event)
-    Logger.debug "Event (#{time}µs): #{inspect event}"
     :ok = Udev.poll(res)
 
+    Logger.debug "Event (#{time}µs): #{inspect event}"
+
     {:noreply, state}
-  end
-
-  def decorate_device(dev) do
-    decorate_device(dev, [:devnum])
-  end
-
-  defp decorate_device(%{major: nil, minor: nil} = dev, [:devnum|t]) do
-    Map.put(dev, :devnum, nil)
-    |> decorate_device(t)
-  end
-  defp decorate_device(%{major: major, minor: minor} = dev, [:devnum|t]) do
-    Map.put(dev, :devnum, {major, minor})
-    |> decorate_device(t)
-  end
-
-  defp decorate_device(dev, [_h|t]) do
-    decorate_device(dev, t)
-  end
-
-  defp decorate_device(dev, []) do
-    dev
   end
 end
