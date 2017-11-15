@@ -264,16 +264,17 @@ static ERL_NIF_TERM mon_receive_device(ErlNifEnv *env, int argc, const ERL_NIF_T
   if(dev) {
     ERL_NIF_TERM map = enif_make_new_map(env);
     dev_t devnum = udev_device_get_devnum(dev);
+
     ERL_NIF_TERM atom_action;
     const char *action = udev_device_get_action(dev);
-    int rv = enif_make_existing_atom(env, action, &atom_action, ERL_NIF_LATIN1);
+    enif_make_existing_atom(env, action, &atom_action, ERL_NIF_LATIN1);
 
-    ASSERT(rv > 0);
+    map_put(env, map, &map, priv->atom_action, atom_action);
+    map_put(env, map, &map, priv->atom_seqnum, enif_make_long(env, udev_device_get_seqnum(dev)));
 
     map_put_string(env, map, &map, priv->atom_devnode, udev_device_get_devnode(dev));
     map_put_string(env, map, &map, priv->atom_subsystem, udev_device_get_subsystem(dev));
     map_put_string(env, map, &map, priv->atom_devtype, udev_device_get_devtype(dev));
-    map_put(env, map, &map, priv->atom_action, atom_action);
     map_put_string(env, map, &map, priv->atom_devpath, udev_device_get_devpath(dev));
     map_put_string(env, map, &map, priv->atom_syspath, udev_device_get_syspath(dev));
     map_put_string(env, map, &map, priv->atom_sysname, udev_device_get_sysname(dev));
@@ -281,7 +282,6 @@ static ERL_NIF_TERM mon_receive_device(ErlNifEnv *env, int argc, const ERL_NIF_T
     map_put_string(env, map, &map, priv->atom_driver, udev_device_get_driver(dev));
     map_put(env, map, &map, priv->atom_major, enif_make_uint(env, MAJOR(devnum)));
     map_put(env, map, &map, priv->atom_minor, enif_make_uint(env, MINOR(devnum)));
-    map_put(env, map, &map, priv->atom_seqnum, enif_make_long(env, udev_device_get_seqnum(dev)));
 
     udev_device_unref(dev);
 
