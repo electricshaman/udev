@@ -113,11 +113,6 @@ static int load(ErlNifEnv* env, void** priv, ERL_NIF_TERM info) {
   data->atom_syspath = enif_make_atom(env, "syspath");
   data->atom_sysname = enif_make_atom(env, "sysname");
   data->atom_sysnum = enif_make_atom(env, "sysnum");
-  data->atom_vid = enif_make_atom(env, "vid");
-  data->atom_pid = enif_make_atom(env, "pid");
-  data->atom_man = enif_make_atom(env, "manufacturer");
-  data->atom_prod = enif_make_atom(env, "product");
-  data->atom_serial = enif_make_atom(env, "serial");
   data->atom_driver = enif_make_atom(env, "driver");
   data->atom_seqnum = enif_make_atom(env, "seqnum");
 
@@ -287,21 +282,6 @@ static ERL_NIF_TERM receive_device(ErlNifEnv *env, int argc, const ERL_NIF_TERM 
     map_put(env, map, &map, priv->atom_major, enif_make_uint(env, MAJOR(devnum)));
     map_put(env, map, &map, priv->atom_minor, enif_make_uint(env, MINOR(devnum)));
     map_put(env, map, &map, priv->atom_seqnum, enif_make_long(env, udev_device_get_seqnum(dev)));
-
-    dev = udev_device_get_parent_with_subsystem_devtype(dev, "usb", "usb_device");
-    if(dev) {
-      map_put_string(env, map, &map, priv->atom_vid, udev_device_get_sysattr_value(dev,"idVendor"));
-      map_put_string(env, map, &map, priv->atom_pid, udev_device_get_sysattr_value(dev,"idProduct"));
-      map_put_string(env, map, &map, priv->atom_man, udev_device_get_sysattr_value(dev,"manufacturer"));
-      map_put_string(env, map, &map, priv->atom_prod, udev_device_get_sysattr_value(dev,"product"));
-      map_put_string(env, map, &map, priv->atom_serial, udev_device_get_sysattr_value(dev,"serial"));
-    } else {
-      map_put_string(env, map, &map, priv->atom_vid, NULL);
-      map_put_string(env, map, &map, priv->atom_pid, NULL);
-      map_put_string(env, map, &map, priv->atom_man, NULL);
-      map_put_string(env, map, &map, priv->atom_prod, NULL);
-      map_put_string(env, map, &map, priv->atom_serial, NULL);
-    }
 
     udev_device_unref(dev);
 
