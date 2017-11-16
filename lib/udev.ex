@@ -15,7 +15,7 @@ defmodule Udev do
   end
 
   def start(_name) do
-    raise "NIF start/0 not implemented"
+    raise "NIF start/1 not implemented"
   end
 
   def stop(_res) do
