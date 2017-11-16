@@ -20,18 +20,26 @@ defmodule Udev.Device do
     :seqnum
   ]
 
+  def new_from_syspath(syspath) do
+    find_device(fn ->
+      Udev.new_from_syspath(to_charlist(syspath))
+    end)
+  end
+
   def get_parent_with_subsystem_devtype(%__MODULE__{} = device, subsystem, devtype) do
-    get_parent = fn ->
+    find_device(fn ->
       Udev.get_parent_with_subsystem_devtype(
         to_charlist(device.syspath), to_charlist(subsystem), to_charlist(devtype))
-    end
+    end)
+  end
 
-    case :timer.tc(get_parent) do
-      {time, {:ok, parent}} ->
-        Logger.debug "Found device parent in #{time}µs: #{inspect parent}"
-        {:ok, struct(Udev.Device, parent)}
+  defp find_device(fun) do
+    case :timer.tc(fun) do
+      {time, {:ok, device}} ->
+        Logger.debug "Found device (#{time}µs): #{inspect device}"
+        {:ok, struct(Udev.Device, device)}
       {time, {:error, _} = error} ->
-        Logger.error "Parent not found in #{time}µs: #{inspect error}"
+        Logger.error "Device not found (#{time}µs): #{inspect error}"
         error
     end
   end

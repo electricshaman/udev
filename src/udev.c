@@ -333,7 +333,7 @@ static ERL_NIF_TERM dev_get_parent_sub_devtype(ErlNifEnv *env, int argc, const E
 
   device = udev_device_new_from_syspath(context, path);
   if(!device) {
-    return enif_make_tuple(env, priv->atom_error, priv->atom_dnf);
+    return enif_make_tuple2(env, priv->atom_error, priv->atom_dnf);
   }
 
   parent = udev_device_get_parent_with_subsystem_devtype(device, subsystem, devtype);
@@ -350,12 +350,45 @@ static ERL_NIF_TERM dev_get_parent_sub_devtype(ErlNifEnv *env, int argc, const E
   return enif_make_tuple2(env, priv->atom_ok, map);
 }
 
+static ERL_NIF_TERM dev_new_from_syspath(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
+{
+  struct udev *context;
+  struct udev_device *device;
+  monitor_priv* priv = enif_priv_data(env);
+
+  char path[255];
+  (void)memset(&path, '\0', sizeof(path));
+
+  if(enif_get_string(env, argv[0], path, sizeof(path), ERL_NIF_LATIN1) < 1) {
+    return enif_make_badarg(env);
+  }
+
+  context = udev_new();
+  if(!context) {
+    enif_fprintf(stderr, "Can't create udev context\n");
+    return enif_make_badarg(env);
+  }
+
+  device = udev_device_new_from_syspath(context, path);
+  if(!device) {
+    return enif_make_tuple2(env, priv->atom_error, priv->atom_dnf);
+  }
+
+  ERL_NIF_TERM map = build_device_map(env, device);
+
+  udev_device_unref(device);
+  udev_unref(context);
+
+  return enif_make_tuple2(env, priv->atom_ok, map);
+}
+
 static ErlNifFunc nif_funcs[] = {
   {"start", 1, mon_start},
   {"stop", 1, mon_stop},
   {"poll", 1, mon_poll},
   {"receive_device", 1, mon_receive_device},
-  {"get_parent_with_subsystem_devtype", 3, dev_get_parent_sub_devtype}
+  {"get_parent_with_subsystem_devtype", 3, dev_get_parent_sub_devtype},
+  {"new_from_syspath", 1, dev_new_from_syspath}
 };
 
 ERL_NIF_INIT(Elixir.Udev, nif_funcs, &load, &reload, &upgrade, &unload)

@@ -33,4 +33,8 @@ defmodule Udev do
   def get_parent_with_subsystem_devtype(_syspath, _subsystem, _devtype) do
     raise "NIF get_parent_with_subsystem_devtype/3 not implemented"
   end
+
+  def new_from_syspath(_syspath) do
+    raise "NIF new_from_syspath/1 is not implemented"
+  end
 end
