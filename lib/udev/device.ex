@@ -20,10 +20,10 @@ defmodule Udev.Device do
     :seqnum
   ]
 
-  def get_parent_with_subsystem_devtype(%{syspath: path} = _device, subsystem, devtype) do
+  def get_parent_with_subsystem_devtype(%__MODULE__{} = device, subsystem, devtype) do
     get_parent = fn ->
       Udev.get_parent_with_subsystem_devtype(
-        to_charlist(path), to_charlist(subsystem), to_charlist(devtype))
+        to_charlist(device.syspath), to_charlist(subsystem), to_charlist(devtype))
     end
 
     case :timer.tc(get_parent) do
