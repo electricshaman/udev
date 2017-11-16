@@ -15,9 +15,7 @@ defmodule Udev.Device do
     :devnode,
     :driver,
     :action,
-    :seqnum,
-    :sysattr,
-    :tags
+    :seqnum
   ]
 
 end
