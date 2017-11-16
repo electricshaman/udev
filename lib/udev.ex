@@ -29,4 +29,8 @@ defmodule Udev do
   def receive_device(_res) do
     raise "NIF receive_device/1 not implemented"
   end
+
+  def get_parent_with_subsystem_devtype(_syspath, _subsystem, _devtype) do
+    raise "NIF get_parent_with_subsystem_devtype/3 not implemented"
+  end
 end

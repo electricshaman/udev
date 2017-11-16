@@ -55,6 +55,8 @@ typedef struct {
   ERL_NIF_TERM atom_serial;
   ERL_NIF_TERM atom_driver;
   ERL_NIF_TERM atom_seqnum;
+  ERL_NIF_TERM atom_dnf;
+  ERL_NIF_TERM atom_pnf;
 } monitor_priv;
 
 static void mon_rt_dtor(ErlNifEnv *env, void *obj)
@@ -115,6 +117,8 @@ static int load(ErlNifEnv* env, void** priv, ERL_NIF_TERM info) {
   data->atom_sysnum = enif_make_atom(env, "sysnum");
   data->atom_driver = enif_make_atom(env, "driver");
   data->atom_seqnum = enif_make_atom(env, "seqnum");
+  data->atom_dnf = enif_make_atom(env, "device_not_found");
+  data->atom_pnf = enif_make_atom(env, "parent_not_found");
 
   *priv = (void*) data;
 
@@ -242,6 +246,38 @@ static int map_put(ErlNifEnv *env, ERL_NIF_TERM map_in, ERL_NIF_TERM* map_out, E
   return enif_make_map_put(env, map_in, key, value, map_out);
 }
 
+static ERL_NIF_TERM build_device_map(ErlNifEnv *env, struct udev_device *dev)
+{
+  monitor_priv* priv = enif_priv_data(env);
+  ERL_NIF_TERM map = enif_make_new_map(env);
+  dev_t devnum = udev_device_get_devnum(dev);
+
+  ERL_NIF_TERM atom_action;
+  const char *action = udev_device_get_action(dev);
+
+  if(action) {
+    enif_make_existing_atom(env, action, &atom_action, ERL_NIF_LATIN1);
+    map_put(env, map, &map, priv->atom_action, atom_action);
+  } else {
+    map_put(env, map, &map, priv->atom_action, priv->atom_nil);
+  }
+
+  map_put(env, map, &map, priv->atom_seqnum, enif_make_long(env, udev_device_get_seqnum(dev)));
+
+  map_put_string(env, map, &map, priv->atom_devnode, udev_device_get_devnode(dev));
+  map_put_string(env, map, &map, priv->atom_subsystem, udev_device_get_subsystem(dev));
+  map_put_string(env, map, &map, priv->atom_devtype, udev_device_get_devtype(dev));
+  map_put_string(env, map, &map, priv->atom_devpath, udev_device_get_devpath(dev));
+  map_put_string(env, map, &map, priv->atom_syspath, udev_device_get_syspath(dev));
+  map_put_string(env, map, &map, priv->atom_sysname, udev_device_get_sysname(dev));
+  map_put_string(env, map, &map, priv->atom_sysnum, udev_device_get_sysnum(dev));
+  map_put_string(env, map, &map, priv->atom_driver, udev_device_get_driver(dev));
+  map_put(env, map, &map, priv->atom_major, enif_make_uint(env, MAJOR(devnum)));
+  map_put(env, map, &map, priv->atom_minor, enif_make_uint(env, MINOR(devnum)));
+
+  return map;
+}
+
 static ERL_NIF_TERM mon_receive_device(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
 {
   Monitor *mon;
@@ -257,40 +293,69 @@ static ERL_NIF_TERM mon_receive_device(ErlNifEnv *env, int argc, const ERL_NIF_T
   dev = udev_monitor_receive_device(mon->monitor);
 
   if(dev) {
-    ERL_NIF_TERM map = enif_make_new_map(env);
-    dev_t devnum = udev_device_get_devnum(dev);
-
-    ERL_NIF_TERM atom_action;
-    const char *action = udev_device_get_action(dev);
-    enif_make_existing_atom(env, action, &atom_action, ERL_NIF_LATIN1);
-
-    map_put(env, map, &map, priv->atom_action, atom_action);
-    map_put(env, map, &map, priv->atom_seqnum, enif_make_long(env, udev_device_get_seqnum(dev)));
-
-    map_put_string(env, map, &map, priv->atom_devnode, udev_device_get_devnode(dev));
-    map_put_string(env, map, &map, priv->atom_subsystem, udev_device_get_subsystem(dev));
-    map_put_string(env, map, &map, priv->atom_devtype, udev_device_get_devtype(dev));
-    map_put_string(env, map, &map, priv->atom_devpath, udev_device_get_devpath(dev));
-    map_put_string(env, map, &map, priv->atom_syspath, udev_device_get_syspath(dev));
-    map_put_string(env, map, &map, priv->atom_sysname, udev_device_get_sysname(dev));
-    map_put_string(env, map, &map, priv->atom_sysnum, udev_device_get_sysnum(dev));
-    map_put_string(env, map, &map, priv->atom_driver, udev_device_get_driver(dev));
-    map_put(env, map, &map, priv->atom_major, enif_make_uint(env, MAJOR(devnum)));
-    map_put(env, map, &map, priv->atom_minor, enif_make_uint(env, MINOR(devnum)));
-
+    ERL_NIF_TERM map = build_device_map(env, dev);
     udev_device_unref(dev);
-
     return map;
-  } else {
-    return priv->atom_error;
   }
+
+  return priv->atom_error;
+}
+
+static ERL_NIF_TERM dev_get_parent_sub_devtype(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
+{
+  struct udev *context;
+  struct udev_device *device;
+  struct udev_device *parent;
+  monitor_priv* priv = enif_priv_data(env);
+
+  char path[255], subsystem[255], devtype[255];
+  (void)memset(&path, '\0', sizeof(path));
+  (void)memset(&subsystem, '\0', sizeof(subsystem));
+  (void)memset(&devtype, '\0', sizeof(devtype));
+
+  if(enif_get_string(env, argv[0], path, sizeof(path), ERL_NIF_LATIN1) < 1) {
+    return enif_make_badarg(env);
+  }
+
+  if(enif_get_string(env, argv[1], subsystem, sizeof(subsystem), ERL_NIF_LATIN1) < 1) {
+    return enif_make_badarg(env);
+  }
+
+  if(enif_get_string(env, argv[2], devtype, sizeof(devtype), ERL_NIF_LATIN1) < 1) {
+    return enif_make_badarg(env);
+  }
+
+  context = udev_new();
+  if(!context) {
+    enif_fprintf(stderr, "Can't create udev context\n");
+    return enif_make_badarg(env);
+  }
+
+  device = udev_device_new_from_syspath(context, path);
+  if(!device) {
+    return enif_make_tuple(env, priv->atom_error, priv->atom_dnf);
+  }
+
+  parent = udev_device_get_parent_with_subsystem_devtype(device, subsystem, devtype);
+  if(!parent) {
+    return enif_make_tuple2(env, priv->atom_error, priv->atom_pnf);
+  }
+
+  ERL_NIF_TERM map = build_device_map(env, parent);
+
+  udev_device_unref(device);
+  udev_device_unref(parent);
+  udev_unref(context);
+
+  return enif_make_tuple2(env, priv->atom_ok, map);
 }
 
 static ErlNifFunc nif_funcs[] = {
   {"start", 1, mon_start},
   {"stop", 1, mon_stop},
   {"poll", 1, mon_poll},
-  {"receive_device", 1, mon_receive_device}
+  {"receive_device", 1, mon_receive_device},
+  {"get_parent_with_subsystem_devtype", 3, dev_get_parent_sub_devtype}
 };
 
 ERL_NIF_INIT(Elixir.Udev, nif_funcs, &load, &reload, &upgrade, &unload)

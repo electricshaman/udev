@@ -13,13 +13,15 @@ defmodule Udev.Monitor do
     start_link(self(), name)
   end
 
-  def start_link(_name), do: {:error, :badarg}
+  def start_link(_name),
+    do: {:error, :badarg}
 
   def start_link(listener, name) when name in @names do
     GenServer.start_link(__MODULE__, [listener, name])
   end
 
-  def start_link(_listener, _name), do: {:error, :badarg}
+  def start_link(_listener, _name),
+    do: {:error, :badarg}
 
   def init([listener, name]) do
     {:ok, res} = Udev.start(name)
