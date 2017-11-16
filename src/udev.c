@@ -143,17 +143,12 @@ static ERL_NIF_TERM mon_start(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[
   struct udev *context;
   struct udev_monitor *udev_mon;
   monitor_priv* priv = enif_priv_data(env);
-  ErlNifBinary name_bin;
+  char name[7];
   ErlNifPid self;
 
-  if (enif_inspect_binary(env, argv[0], &name_bin) == 0) {
+  if (!enif_get_atom(env, argv[0], name, 7, ERL_NIF_LATIN1)) {
     return enif_make_badarg(env);
   }
-
-  char name[name_bin.size + 1];
-  *name = '\0';
-  strncat(name, (char*) name_bin.data, name_bin.size);
-  enif_release_binary(&name_bin);
 
   if(strcmp(name, "udev") > 0 && strcmp(name, "kernel") > 0) {
     return enif_make_badarg(env);

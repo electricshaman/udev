@@ -22,7 +22,7 @@ defmodule Udev.Monitor do
   def start_link(_listener, _name), do: {:error, :badarg}
 
   def init([listener, name]) do
-    {:ok, res} = Udev.start(to_string(name))
+    {:ok, res} = Udev.start(name)
     :ok = Udev.poll(res)
     {:ok, %{res: res, listener: listener, name: name}}
   end
