@@ -9,11 +9,18 @@ defmodule Udev.Mixfile do
       start_permanent: Mix.env == :prod,
       deps: deps(),
       compilers: [:elixir_make] ++ Mix.compilers,
-      make_clean: ["clean"]
+      make_clean: ["clean"],
+      description: description(),
+      package: package(),
+      name: "Udev",
+      source_url: "https://github.com/electricshaman/udev"
     ]
   end
 
-  # Run "mix help compile.app" to learn about applications.
+  defp description do
+    "Experimental libudev NIF for Linux"
+  end
+
   def application do
     [
       extra_applications: [:logger],
@@ -21,13 +28,18 @@ defmodule Udev.Mixfile do
     ]
   end
 
-  # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
       {:elixir_make, "~> 0.4", runtime: false}
+    ]
+  end
 
-      # {:dep_from_hexpm, "~> 0.3.0"},
-      # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"},
+  defp package() do
+    [
+      files: ["lib", "src/*.[ch]", "Makefile", "LICENSE", "mix.exs", "README.md"],
+      maintainers: ["Jeff Smith"],
+      licenses: ["Apache 2.0"],
+      links: %{"GitHub" => "https://github.com/electricshaman/udev"}
     ]
   end
 end
